@@ -78,7 +78,7 @@ Requires macOS 14+ and a Swift 5.9+ toolchain.
 
 ```sh
 swift build            # zero dependencies — builds offline
-swift test             # 29 tests across all 7 categories
+swift test             # 33 tests across all 7 categories
 swift run Lodestar     # runs the menu-bar app
 ```
 
@@ -101,6 +101,72 @@ around.
 
 ---
 
+## How to use
+
+### 1. One-time setup
+
+1. **Have a local model running.** The default expects Ollama:
+   ```sh
+   ollama serve
+   ollama pull llama3.1:8b            # text
+   ollama pull llama3.2-vision:11b    # screen vision
+   ```
+   (Or point the config at MLX / llama.cpp / the Nova gateway — see Configuration.)
+2. **Launch Lodestar.** A cursor-rays icon appears in the menu bar; there's no dock icon.
+   First launch writes `~/.config/lodestar/config.json`.
+3. **Grant permissions** when macOS prompts (or in System Settings › Privacy & Security):
+   - **Accessibility** — required for the hotkey, reading on-screen controls, and pointing.
+   - **Screen Recording** — for "what's on my screen" (the vision route).
+   - **Microphone** — only if you turn on voice input.
+
+   After granting **Accessibility**, quit and relaunch — macOS only applies it on next launch.
+
+### 2. Everyday use
+
+- **Summon it:** press **⌃⌥Space** (Control-Option-Space) anywhere. A bubble pops up next to
+  your cursor.
+- **Ask:** type a question and hit Return — *"what does this error mean?"*, *"where do I export
+  this?"*, *"summarize what I selected."* Leave it blank and press Return to get *"what's on my
+  screen right now?"*
+- **Answer:** the reply streams into the bubble and is spoken aloud (local TTS).
+- **Pointer:** if the answer refers to a specific control, a yellow halo lands on it — across
+  monitors.
+- **Context is automatic:** the frontmost app, any highlighted text, and (for vision) a
+  screenshot are gathered for you each time.
+
+### 3. Menu-bar menu
+
+| Item | What it does |
+|---|---|
+| **Ask about screen** | Same as the hotkey. |
+| **Privacy pause** | Hard-stops all capture + inference. Toggle off to resume. |
+| **Egress → …** | Read-only: exactly which hosts the app may contact. |
+| **Open config…** | Opens `config.json` in your editor. |
+| **Quit Lodestar** | Quits. |
+
+### 4. Point it at a different brain
+
+Edit `~/.config/lodestar/config.json` → `routing`, then relaunch:
+
+- `default` — where **text** questions go (`nova` = Nova's balancer, or `ollama` / `mlx`).
+- `vision` — where **screenshots** go (keep a local vision model here).
+- `quick` — a small, fast model for lightweight asks.
+
+By default text goes through **Nova** (on your LAN) pinned to a local backend, and screenshots
+go to **local Ollama vision** — so nothing reaches the web. See Configuration for the details.
+
+### 5. Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| Bubble shows an error / no answer | The routed model isn't reachable. Check `curl 127.0.0.1:11434/api/tags` (Ollama) or `curl 127.0.0.1:18792/health` (Nova). |
+| Hotkey does nothing | Grant **Accessibility**, then quit + relaunch. |
+| "What's on my screen" is vague | Grant **Screen Recording**, and make sure `routing.vision` points at a vision model (`llama3.2-vision`, `qwen2-vl`). |
+| Pointer lands on the wrong control | It matched the wrong element; canvas apps (Figma/DaVinci) have thin Accessibility data and are less precise. |
+| `egress blocked` in the log | A provider points at a public host — the app only talks to your machine/LAN by design. Add a LAN host to `security.egress_allowlist` if that's intended. |
+
+---
+
 ## Configuration
 
 JSON at `~/.config/lodestar/config.json`, written with sensible local defaults on first
@@ -112,7 +178,7 @@ run. You pick which local engine answers what:
   "providers": {
     "nova":   { "kind": "nova-gateway", "base_url": "http://127.0.0.1:18792",
                 "path": "/api/chat", "request_format": "message", "response_key": "response",
-                "use_memory": true, "preferred_backend": null, "task_type": "auto" },
+                "use_memory": true, "preferred_backend": "ollama", "task_type": "auto" },
     "ollama": { "kind": "openai", "base_url": "http://127.0.0.1:11434/v1",
                 "text": "llama3.1:8b", "vision": "llama3.2-vision:11b" }
   },
