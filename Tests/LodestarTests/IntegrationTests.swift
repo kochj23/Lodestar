@@ -48,6 +48,8 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(Config.default.providers["nova"]?.path, "/api/chat")
         XCTAssertEqual(Config.default.routing.default, "nova")   // text goes through the balancer
         XCTAssertEqual(Config.default.routing.vision, "ollama")  // screenshots stay local
+        // local-by-default: no on-screen text to cloud unless the user opts in
+        XCTAssertEqual(Config.default.providers["nova"]?.preferredBackend, "ollama")
     }
 
     func testUnknownProviderKindIsSkippedNotFatal() {

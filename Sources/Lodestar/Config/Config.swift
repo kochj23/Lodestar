@@ -92,10 +92,13 @@ struct Config: Codable {
             // Nova gateway = the built-in load balancer (health-checks ollama/mlx/
             // llamacpp/openrouter). "message" format → POST /api/chat {message}.
             // Set preferredBackend to a local backend to keep on-screen text off cloud.
+            // preferredBackend pinned to a local backend by default: keeps on-screen
+            // text off the cloud (openrouter). Set it null to let the balancer route
+            // freely across all backends, including cloud.
             "nova": .init(kind: "nova-gateway", baseUrl: "http://127.0.0.1:18792",
                           text: nil, vision: nil,
                           path: "/api/chat", responseKey: "response", useMemory: true,
-                          requestFormat: "message", preferredBackend: nil, taskType: "auto"),
+                          requestFormat: "message", preferredBackend: "ollama", taskType: "auto"),
             "ollama": .init(kind: "openai", baseUrl: "http://127.0.0.1:11434/v1",
                             text: "llama3.1:8b", vision: "llama3.2-vision:11b",
                             path: nil, responseKey: nil, useMemory: nil,
