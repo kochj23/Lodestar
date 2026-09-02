@@ -83,10 +83,12 @@ swift run Lodestar     # runs the menu-bar app
 ```
 
 For the real thing (so the TCC permission prompts carry proper descriptions), bundle it
-into a Developer-ID **notarized `.app`** using `Bundle/Info.plist`. The app is deliberately
-**not sandboxed** — controlling other apps via Accessibility/AppleScript plus screen
-capture is incompatible with the App Sandbox; this is called out honestly rather than
-worked around.
+into a `.app` using `Bundle/Info.plist` and sign it with your **Apple Development** cert.
+Notarization is intentionally **skipped** — this is a personal tool, never headed for the App
+Store, so a locally-signed build that runs on your own Macs is all it needs. The app is also
+deliberately **not sandboxed** — controlling other apps via Accessibility/AppleScript plus
+screen capture is incompatible with the App Sandbox; called out honestly rather than worked
+around.
 
 ### Permissions it asks for (all explicit macOS grants)
 
@@ -106,7 +108,7 @@ run. You pick which local engine answers what:
 
 ```jsonc
 {
-  "routing": { "default": "nova", "quick": "mlx", "vision": "ollama" },
+  "routing": { "default": "nova", "quick": "mlx", "vision": "ollama" },  // Nova balancer (LAN), pinned local
   "providers": {
     "nova":   { "kind": "nova-gateway", "base_url": "http://127.0.0.1:18792",
                 "path": "/api/chat", "request_format": "message", "response_key": "response",
@@ -142,12 +144,14 @@ Two knobs matter:
   `"query"` → `POST /api/ai/query {query, task_type, …}` (the richer `nova_gateway` router).
 - `preferred_backend`: pin a specific backend, e.g. `"ollama"`.
 
-**Privacy caveat worth knowing:** Nova's balancer includes a *cloud* backend
-(`openrouter`, `is_local: false`). Lodestar's egress guard only governs Lodestar — once you
-delegate to Nova, Nova decides the backend. Screenshots never go this way (they route to
-local Ollama vision), but on-screen **text** could reach the cloud if the balancer picks
-`openrouter`. To keep everything on your network, set `preferred_backend` to a local backend
-for the `nova` provider.
+**Never to the web (the boundary is the internet, not your LAN):** Nova's balancer includes
+a *web* backend (`openrouter`, `is_local: false`). Routing through Nova is fine — Nova is on
+your LAN — but its cloud backend is not. So the default **pins `preferred_backend` to a local
+backend (`ollama`)**, which keeps on-screen text off the web while still going through Nova
+for persona + memory. Screenshots always route to local Ollama vision, never Nova. Set
+`preferred_backend: null` only if you knowingly want the balancer to be free to pick the web
+backend. (Residual: if the pinned local backend is *down*, the gateway may fall back — the
+airtight fix would be a local-only route on the gateway, deliberately not added here.)
 
 ---
 

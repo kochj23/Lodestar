@@ -108,7 +108,9 @@ struct Config: Codable {
                          path: nil, responseKey: nil, useMemory: nil,
                          requestFormat: nil, preferredBackend: nil, taskType: nil),
         ],
-        // Text → Nova's balancer; screenshots → local Ollama vision (never leave the box).
+        // Text → Nova (persona + memory) via its balancer, PINNED to a local backend so
+        // nothing reaches the *web* (openrouter). The LAN is fine — that's the boundary.
+        // Screenshots → local Ollama vision, which has no web path at all.
         routing: .init(default: "nova", quick: "mlx", vision: "ollama"),
         speech: .init(stt: "none", sttModel: "large-v3-turbo", tts: "avspeech"),
         security: .init(

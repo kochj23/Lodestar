@@ -44,12 +44,18 @@ final class IntegrationTests: XCTestCase {
         XCTAssertNil(q["preferred_backend"])   // full balancing when unset
     }
 
-    func testDefaultNovaProviderTargetsBalancer() {
+    func testDefaultsNeverReachTheWeb() {
+        // Text uses Nova's balancer (LAN is fine) but pinned to a local backend so the
+        // web backend (openrouter) is never selected in the normal path.
+        XCTAssertEqual(Config.default.routing.default, "nova")
         XCTAssertEqual(Config.default.providers["nova"]?.path, "/api/chat")
-        XCTAssertEqual(Config.default.routing.default, "nova")   // text goes through the balancer
-        XCTAssertEqual(Config.default.routing.vision, "ollama")  // screenshots stay local
-        // local-by-default: no on-screen text to cloud unless the user opts in
         XCTAssertEqual(Config.default.providers["nova"]?.preferredBackend, "ollama")
+        // Screenshots go to local Ollama vision — no web path at all.
+        XCTAssertEqual(Config.default.routing.vision, "ollama")
+        // Lodestar's own egress denies the public web outright.
+        let g = EgressGuard(allowlist: Config.default.security.egressAllowlist,
+                            allowPrivateNetwork: true)
+        XCTAssertThrowsError(try g.check(URL(string: "https://openrouter.ai/api")!))
     }
 
     func testUnknownProviderKindIsSkippedNotFatal() {
