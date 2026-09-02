@@ -22,8 +22,12 @@ final class ProviderRegistry {
             case "nova-gateway":
                 byID[id] = NovaGatewayProvider(
                     id: id, base: pc.baseUrl,
-                    path: pc.path ?? "/api/ai/query",
-                    responseKey: pc.responseKey ?? "response", token: token, egress: egress)
+                    path: pc.path ?? "/api/chat",
+                    responseKey: pc.responseKey ?? "response",
+                    requestFormat: pc.requestFormat ?? "message",
+                    preferredBackend: pc.preferredBackend,
+                    taskType: pc.taskType,
+                    token: token, egress: egress)
             default:
                 Log.warn("unknown provider kind '\(pc.kind)' for '\(id)' — skipping")
             }

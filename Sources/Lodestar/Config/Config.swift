@@ -23,6 +23,10 @@ struct Config: Codable {
         var path: String?           // nova-gateway request path
         var responseKey: String?    // nova-gateway JSON key holding the answer
         var useMemory: Bool?        // nova-gateway memory recall/remember
+        // Nova load-balancer controls:
+        var requestFormat: String?  // "message" (/api/chat) | "query" (/api/ai/query)
+        var preferredBackend: String? // force a Nova backend, e.g. "ollama"/"mlx"/"llamacpp" (keeps it off cloud)
+        var taskType: String?       // Nova routing hint, e.g. "auto"/"chat"/"code"
     }
 
     struct Routing: Codable {
@@ -41,6 +45,7 @@ struct Config: Codable {
         var egressAllowlist: [String]
         var redactSecureFields: Bool
         var captureRetention: String   // "none"
+        var allowPrivateNetwork: Bool? // true = "local network only"; false = loopback + allow-list only
     }
 
     struct Tools: Codable {
@@ -84,22 +89,29 @@ struct Config: Codable {
     static let `default` = Config(
         hotkey: .init(invoke: "ctrl+opt+space", pause: "ctrl+opt+."),
         providers: [
+            // Nova gateway = the built-in load balancer (health-checks ollama/mlx/
+            // llamacpp/openrouter). "message" format → POST /api/chat {message}.
+            // Set preferredBackend to a local backend to keep on-screen text off cloud.
             "nova": .init(kind: "nova-gateway", baseUrl: "http://127.0.0.1:18792",
                           text: nil, vision: nil,
-                          path: "/api/ai/query", responseKey: "response", useMemory: true),
+                          path: "/api/chat", responseKey: "response", useMemory: true,
+                          requestFormat: "message", preferredBackend: nil, taskType: "auto"),
             "ollama": .init(kind: "openai", baseUrl: "http://127.0.0.1:11434/v1",
                             text: "llama3.1:8b", vision: "llama3.2-vision:11b",
-                            path: nil, responseKey: nil, useMemory: nil),
+                            path: nil, responseKey: nil, useMemory: nil,
+                            requestFormat: nil, preferredBackend: nil, taskType: nil),
             "mlx": .init(kind: "openai", baseUrl: "http://127.0.0.1:8080/v1",
                          text: "qwen2.5-7b-instruct", vision: nil,
-                         path: nil, responseKey: nil, useMemory: nil),
+                         path: nil, responseKey: nil, useMemory: nil,
+                         requestFormat: nil, preferredBackend: nil, taskType: nil),
         ],
-        routing: .init(default: "ollama", quick: "mlx", vision: "ollama"),
+        // Text → Nova's balancer; screenshots → local Ollama vision (never leave the box).
+        routing: .init(default: "nova", quick: "mlx", vision: "ollama"),
         speech: .init(stt: "none", sttModel: "large-v3-turbo", tts: "avspeech"),
         security: .init(
-            egressAllowlist: ["127.0.0.1", "::1",
-                              "memory-server.digitalnoise.net", "ollama.digitalnoise.net"],
-            redactSecureFields: true, captureRetention: "none"),
+            egressAllowlist: ["memory-server.digitalnoise.net", "ollama.digitalnoise.net"],
+            redactSecureFields: true, captureRetention: "none",
+            allowPrivateNetwork: true),
         tools: .init(notes: true, calendar: true, shortcuts: true, files: false)
     )
 }

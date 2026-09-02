@@ -28,6 +28,28 @@ final class IntegrationTests: XCTestCase {
         }
     }
 
+    func testNovaBalancerBodyShapes() {
+        // "message" format → /api/chat, and a pinned backend keeps content off cloud.
+        let msg = NovaGatewayProvider.makeBody(prompt: "hi", requestFormat: "message",
+                                               preferredBackend: "ollama", taskType: "auto")
+        XCTAssertEqual(msg["message"] as? String, "hi")
+        XCTAssertEqual(msg["preferred_backend"] as? String, "ollama")
+        XCTAssertNil(msg["query"])
+
+        // "query" format → /api/ai/query with the richer router fields.
+        let q = NovaGatewayProvider.makeBody(prompt: "hi", requestFormat: "query",
+                                             preferredBackend: nil, taskType: "code")
+        XCTAssertEqual(q["query"] as? String, "hi")
+        XCTAssertEqual(q["task_type"] as? String, "code")
+        XCTAssertNil(q["preferred_backend"])   // full balancing when unset
+    }
+
+    func testDefaultNovaProviderTargetsBalancer() {
+        XCTAssertEqual(Config.default.providers["nova"]?.path, "/api/chat")
+        XCTAssertEqual(Config.default.routing.default, "nova")   // text goes through the balancer
+        XCTAssertEqual(Config.default.routing.vision, "ollama")  // screenshots stay local
+    }
+
     func testUnknownProviderKindIsSkippedNotFatal() {
         var cfg = Config.default
         cfg.providers["weird"] = .init(kind: "does-not-exist", baseUrl: "http://127.0.0.1:1",

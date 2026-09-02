@@ -20,7 +20,8 @@ final class AppController: NSObject {
 
     override init() {
         config = Config.loadOrCreate()
-        egress = EgressGuard(allowlist: config.security.egressAllowlist)
+        egress = EgressGuard(allowlist: config.security.egressAllowlist,
+                             allowPrivateNetwork: config.security.allowPrivateNetwork ?? true)
         registry = ProviderRegistry(config: config, egress: egress)
         tts = AVSpeechTTS()   // swap for Piper/F5 provider when configured
         hotkey = HotkeyManager(invoke: config.hotkey.invoke)

@@ -3,7 +3,8 @@
 **A local-only AI companion that lives next to your mouse cursor on macOS.** Hit a
 hotkey and a small bubble appears at your pointer: it reads what's on your screen,
 answers out loud, and can physically point at the control you're looking for — all
-driven by *your own* local models, with **no cloud and no data egress**.
+driven by *your own* models on your machine or LAN. Lodestar itself **never talks to the
+public internet** — only to endpoints you run.
 
 ---
 
@@ -23,9 +24,11 @@ Lodestar is built the other way around.
 
 ### Goals (the non-negotiables)
 
-1. **Local-only, enforced — not promised.** Every network request passes through a single
-   egress chokepoint with a host allow-list that defaults to loopback. There is no other
-   path to the network, so screen and audio can only ever reach a model *you* run.
+1. **Local-network-only, enforced — not promised.** Every network request passes through a
+   single egress chokepoint that permits loopback, private-LAN addresses (RFC1918 / `.local`),
+   and hosts you name — and denies the public internet outright. So screen and audio can only
+   reach a model on your own machine or LAN. (Flip `allow_private_network: false` for
+   loopback-only "strictly local" mode.)
 2. **Provider-agnostic, including Nova.** Lodestar ships no model. Text, vision, speech-to-
    text and text-to-speech are each a swappable capability. Ollama, LM Studio, llama.cpp,
    vLLM, MLX, and the **Nova Gateway** are all first-class behind one small interface.
@@ -103,30 +106,48 @@ run. You pick which local engine answers what:
 
 ```jsonc
 {
-  "routing": { "default": "ollama", "quick": "mlx", "vision": "ollama" },
+  "routing": { "default": "nova", "quick": "mlx", "vision": "ollama" },
   "providers": {
     "nova":   { "kind": "nova-gateway", "base_url": "http://127.0.0.1:18792",
-                "path": "/api/ai/query", "response_key": "response", "use_memory": true },
+                "path": "/api/chat", "request_format": "message", "response_key": "response",
+                "use_memory": true, "preferred_backend": null, "task_type": "auto" },
     "ollama": { "kind": "openai", "base_url": "http://127.0.0.1:11434/v1",
                 "text": "llama3.1:8b", "vision": "llama3.2-vision:11b" }
   },
   "security": {
-    "egress_allowlist": ["127.0.0.1", "::1",
-                         "memory-server.digitalnoise.net", "ollama.digitalnoise.net"],
+    "egress_allowlist": ["memory-server.digitalnoise.net", "ollama.digitalnoise.net"],
+    "allow_private_network": true,
     "redact_secure_fields": true, "capture_retention": "none"
   }
 }
 ```
 
+Loopback and private-LAN hosts don't need to be listed — `allow_private_network` covers them;
+`egress_allowlist` is for *named* LAN hosts. Set `preferred_backend` to keep on-screen text
+off the cloud (see Nova mode below).
+
 Provider tokens are **never** put in this file — if a backend needs one it's read from the
 Keychain (account `provider-<id>`).
 
-### Nova mode
+### Nova mode & the built-in load balancer
 
-Point the `default` route at `nova` and Lodestar becomes a face for Nova at your cursor:
-her persona, her memory (recall before the prompt, remember after), and her agent tooling —
-without reimplementing an agent. The `memory-server` / gateway hosts are the only non-
-loopback entries on the allow-list, and they're your LAN, not the internet.
+The default `text` route is already `nova`: Lodestar POSTs to the Nova gateway's
+`/api/chat`, which **is** Nova's load balancer — it health-checks and distributes across
+`ollama`, `mlx`, `llamacpp` (and `openrouter`) with circuit breakers. You get Nova's
+persona and memory for free, and you don't reimplement routing.
+
+Two knobs matter:
+
+- `request_format`: `"message"` → `POST /api/chat {message}` (the running gateway) or
+  `"query"` → `POST /api/ai/query {query, task_type, …}` (the richer `nova_gateway` router).
+- `preferred_backend`: pin a specific backend, e.g. `"ollama"`.
+
+**Privacy caveat worth knowing:** Nova's balancer includes a *cloud* backend
+(`openrouter`, `is_local: false`). Lodestar's egress guard only governs Lodestar — once you
+delegate to Nova, Nova decides the backend. Screenshots never go this way (they route to
+local Ollama vision), but on-screen **text** could reach the cloud if the balancer picks
+`openrouter`. To keep everything on your network, set `preferred_backend` to a local backend
+for the `nova` provider.
 
 ---
 
