@@ -28,6 +28,12 @@ final class HotkeyManager {
         }
     }
 
+    /// Remove the monitors so the manager can be replaced (e.g. after a hotkey change).
+    func stop() {
+        if let g = globalMonitor { NSEvent.removeMonitor(g); globalMonitor = nil }
+        if let l = localMonitor { NSEvent.removeMonitor(l); localMonitor = nil }
+    }
+
     private func handle(_ e: NSEvent) {
         let mods = e.modifierFlags.intersection([.command, .option, .control, .shift])
         guard mods == invoke.mods else { return }

@@ -9,6 +9,7 @@ final class MenuBarController: NSObject {
 
     var onAskScreen: (() -> Void)?
     var onTogglePause: (() -> Void)?
+    var onSettings: (() -> Void)?
     private(set) var paused = false
 
     func install(providerIDs: [String], egressSummary: String) {
@@ -28,8 +29,13 @@ final class MenuBarController: NSObject {
         let pause = NSMenuItem(title: "Privacy pause (stop all capture)",
                                action: #selector(pauseTapped), keyEquivalent: "")
         pause.target = self
+        pause.state = paused ? .on : .off
         menu.addItem(pause)
         pauseItem = pause
+
+        let settings = NSMenuItem(title: "Settings…", action: #selector(settingsTapped), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
 
         menu.addItem(.separator())
         menu.addItem(withTitle: "Providers: \(providerIDs.joined(separator: ", "))",
@@ -38,7 +44,7 @@ final class MenuBarController: NSObject {
         egress.toolTip = "The only hosts this app may contact. Everything else is blocked."
         menu.addItem(egress)
 
-        let prefs = NSMenuItem(title: "Open config…", action: #selector(openConfig), keyEquivalent: ",")
+        let prefs = NSMenuItem(title: "Open config file…", action: #selector(openConfig), keyEquivalent: "")
         prefs.target = self
         menu.addItem(prefs)
 
@@ -57,6 +63,8 @@ final class MenuBarController: NSObject {
         pauseItem?.state = paused ? .on : .off
         onTogglePause?()
     }
+
+    @objc private func settingsTapped() { onSettings?() }
 
     @objc private func openConfig() { NSWorkspace.shared.open(Config.path) }
 

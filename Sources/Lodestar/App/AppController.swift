@@ -5,15 +5,17 @@ import AppKit
 /// config change.
 @MainActor
 final class AppController: NSObject {
-    private let config: Config
-    private let egress: EgressGuard
-    private let registry: ProviderRegistry
+    private var config: Config
+    private var egress: EgressGuard
+    private var registry: ProviderRegistry
     private let tts: TTSProvider
+    private var speakEnabled: Bool
 
     private let menu = MenuBarController()
     private let hud = HUDController()
     private let overlay = PointerOverlay()
-    private let hotkey: HotkeyManager
+    private let settings = SettingsController()
+    private var hotkey: HotkeyManager
 
     private var lastElements: [AXElement] = []
     private var paused = false
@@ -24,6 +26,7 @@ final class AppController: NSObject {
                              allowPrivateNetwork: config.security.allowPrivateNetwork ?? true)
         registry = ProviderRegistry(config: config, egress: egress)
         tts = AVSpeechTTS()   // swap for Piper/F5 provider when configured
+        speakEnabled = config.speech.tts != "none"
         hotkey = HotkeyManager(invoke: config.hotkey.invoke)
         super.init()
     }
@@ -40,6 +43,12 @@ final class AppController: NSObject {
         hotkey.onInvoke = { [weak self] in self?.invoke() }
         hotkey.start()
 
+        menu.onSettings = { [weak self] in
+            guard let self else { return }
+            self.settings.show(config: self.config)
+        }
+        settings.onSave = { [weak self] cfg in self?.reload(cfg) }
+
         if !Accessibility.isTrusted {
             Log.warn("Accessibility not granted — hotkey, context reading and pointing will be "
                    + "limited. Grant it in System Settings › Privacy & Security › Accessibility.")
@@ -50,6 +59,24 @@ final class AppController: NSObject {
     private func invoke() {
         guard !paused else { Log.info("privacy pause is on — ignoring invoke"); return }
         hud.showAtCursor()
+    }
+
+    /// Persist a config edited in the Settings window and apply it live — no restart.
+    private func reload(_ newConfig: Config) {
+        do { try newConfig.save() } catch { Log.warn("could not write config: \(error)") }
+        config = newConfig
+        egress = EgressGuard(allowlist: newConfig.security.egressAllowlist,
+                             allowPrivateNetwork: newConfig.security.allowPrivateNetwork ?? true)
+        registry = ProviderRegistry(config: newConfig, egress: egress)
+        speakEnabled = newConfig.speech.tts != "none"
+
+        hotkey.stop()
+        hotkey = HotkeyManager(invoke: newConfig.hotkey.invoke)
+        hotkey.onInvoke = { [weak self] in self?.invoke() }
+        hotkey.start()
+
+        menu.install(providerIDs: registry.ids, egressSummary: egress.summary)
+        Log.info("settings applied · hotkey \(newConfig.hotkey.invoke) · egress: \(egress.summary)")
     }
 
     private func ask(_ text: String) {
@@ -107,7 +134,7 @@ final class AppController: NSObject {
         // 5) Intent → speak, and point if there's a concrete target on screen.
         let intent = AssistantIntent.parse(full)
         hud.model.answer = intent.say.isEmpty ? full : intent.say
-        tts.speak(hud.model.answer)
+        if speakEnabled { tts.speak(hud.model.answer) }
         if let target = intent.pointTarget,
            let rect = Targeter.resolve(target, in: lastElements) {
             overlay.point(atAX: rect)

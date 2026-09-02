@@ -78,7 +78,7 @@ Requires macOS 14+ and a Swift 5.9+ toolchain.
 
 ```sh
 swift build            # zero dependencies — builds offline
-swift test             # 33 tests across all 7 categories
+swift test             # 37 tests across all 7 categories
 swift run Lodestar     # runs the menu-bar app
 ```
 
@@ -140,17 +140,23 @@ around.
 |---|---|
 | **Ask about screen** | Same as the hotkey. |
 | **Privacy pause** | Hard-stops all capture + inference. Toggle off to resume. |
+| **Settings… (⌘,)** | A window to change everything — no JSON editing. Applies live on Save. |
 | **Egress → …** | Read-only: exactly which hosts the app may contact. |
-| **Open config…** | Opens `config.json` in your editor. |
+| **Open config file…** | Opens `config.json` in your editor (for the truly advanced). |
 | **Quit Lodestar** | Quits. |
 
-### 4. Point it at a different brain
+### 4. Point it at a different brain — no JSON required
 
-Edit `~/.config/lodestar/config.json` → `routing`, then relaunch:
+Open **Settings…** from the menu bar (**⌘,**). One window covers routing, the Nova backend,
+speech, privacy, the hotkey, and per-provider URLs/models. **Save applies it live** — no
+restart, no file editing. (The raw `config.json` is still there via *Open config file…* if you
+want it.)
 
-- `default` — where **text** questions go (`nova` = Nova's balancer, or `ollama` / `mlx`).
-- `vision` — where **screenshots** go (keep a local vision model here).
-- `quick` — a small, fast model for lightweight asks.
+The three routing choices:
+
+- **Text questions** — `nova` = Nova's balancer, or a direct `ollama` / `mlx`.
+- **Screen vision** — keep a local vision model here.
+- **Quick asks** — a small, fast model.
 
 By default text goes through **Nova** (on your LAN) pinned to a local backend, and screenshots
 go to **local Ollama vision** — so nothing reaches the web. See Configuration for the details.

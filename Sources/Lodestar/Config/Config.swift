@@ -62,6 +62,17 @@ struct Config: Codable {
         return home.appendingPathComponent(".config/lodestar/config.json")
     }
 
+    /// Write the current config back to disk (used by the Settings window).
+    func save() throws {
+        let url = Config.path
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let enc = JSONEncoder()
+        enc.keyEncodingStrategy = .convertToSnakeCase
+        enc.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try enc.encode(self).write(to: url)
+    }
+
     static func loadOrCreate() -> Config {
         let url = path
         if let data = try? Data(contentsOf: url) {
