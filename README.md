@@ -78,9 +78,15 @@ Requires macOS 14+ and a Swift 5.9+ toolchain.
 
 ```sh
 swift build            # zero dependencies — builds offline
-swift test             # 37 tests across all 7 categories
+swift test             # 38 tests across all 7 categories
 swift run Lodestar     # runs the menu-bar app
+swift run Lodestar ask "what does ephemeral mean"   # headless: run one turn, print the answer
 ```
+
+The `ask` subcommand runs the real provider pipeline without the GUI — handy for verifying a
+model actually responds. On startup Lodestar also **auto-detects your installed Ollama models**:
+if the configured `text`/`vision` model isn't present it substitutes one you do have (and logs
+it), so a fresh config "just works" instead of silently failing on a missing model.
 
 For the real thing (so the TCC permission prompts carry proper descriptions), bundle it
 into a `.app` using `Bundle/Info.plist` and sign it with your **Apple Development** cert.

@@ -37,6 +37,7 @@ final class OpenAICompatibleProvider: InferenceProvider, @unchecked Sendable {
                     }
                     var urlReq = URLRequest(url: url)
                     urlReq.httpMethod = "POST"
+                    urlReq.timeoutInterval = 120   // never hang forever on a slow/missing model
                     urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     if let token { urlReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
                     urlReq.httpBody = try Self.makeBody(model: model, req: req)

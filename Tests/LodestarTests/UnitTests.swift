@@ -68,6 +68,13 @@ final class UnitTests: XCTestCase {
         XCTAssertEqual(back.hotkey.invoke, Config.default.hotkey.invoke)
     }
 
+    func testModelPick() {
+        let models = ["qwen3:8b", "qwen2.5vl:3b", "nomic-embed-text:latest", "moondream:latest"]
+        XCTAssertEqual(ModelResolver.pickVision(models), "qwen2.5vl:3b")   // first vision-ish
+        XCTAssertEqual(ModelResolver.pickText(models), "qwen3:8b")         // skips vl + embed
+        XCTAssertNil(ModelResolver.pickVision(["qwen3:8b"]))               // none → nil (vision off)
+    }
+
     func testTargeterFuzzyMatch() {
         let els = [AXElement(role: "AXButton", label: "Export as PDF…",
                              frame: CGRect(x: 10, y: 10, width: 50, height: 20))]

@@ -21,7 +21,7 @@ final class AppController: NSObject {
     private var paused = false
 
     override init() {
-        config = Config.loadOrCreate()
+        config = ModelResolver.resolve(Config.loadOrCreate())   // use models that are actually installed
         egress = EgressGuard(allowlist: config.security.egressAllowlist,
                              allowPrivateNetwork: config.security.allowPrivateNetwork ?? true)
         registry = ProviderRegistry(config: config, egress: egress)
@@ -112,18 +112,20 @@ final class AppController: NSObject {
 
     private func ask(_ text: String) {
         guard !paused else { return }
-        let question = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? "What's on my screen right now? Be brief."
-            : text
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let question = trimmed.isEmpty ? "What's on my screen right now? Be brief." : trimmed
         hud.model.busy = true
         hud.model.answer = ""
-        Task { await runTurn(question) }
+        // Only reach for the (slower, local) vision model when the user is actually
+        // asking about the screen — i.e. they left the box blank. A typed question goes
+        // straight to the fast text route with any selected text as context.
+        Task { await runTurn(question, wantsScreen: trimmed.isEmpty) }
     }
 
-    private func runTurn(_ question: String) async {
-        // 1) Perceive. Only grab pixels if a vision-capable provider will use them.
+    private func runTurn(_ question: String, wantsScreen: Bool) async {
+        // 1) Perceive. Only grab pixels when the user is asking about the screen.
         let visionRoute = registry.route(.vision)
-        let wantsVision = visionRoute?.capabilities.contains(.vision) ?? false
+        let wantsVision = wantsScreen && (visionRoute?.capabilities.contains(.vision) ?? false)
         let ctx = await ContextFuser.build(includeScreenshot: wantsVision)
         lastElements = ctx.elements
 

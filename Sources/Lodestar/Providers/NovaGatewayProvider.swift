@@ -47,6 +47,7 @@ final class NovaGatewayProvider: InferenceProvider, @unchecked Sendable {
                                              preferredBackend: preferredBackend, taskType: taskType)
                     var urlReq = URLRequest(url: url)
                     urlReq.httpMethod = "POST"
+                    urlReq.timeoutInterval = 120
                     urlReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     if let token { urlReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
                     urlReq.httpBody = try JSONSerialization.data(withJSONObject: body)
