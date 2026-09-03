@@ -5,6 +5,7 @@ final class HUDModel: ObservableObject {
     @Published var input: String = ""
     @Published var answer: String = ""
     @Published var busy: Bool = false
+    @Published var focusPing: Int = 0     // bumped each time the HUD is shown, to grab focus
     var onSubmit: ((String) -> Void)?
 
     func submit() {
@@ -17,6 +18,7 @@ final class HUDModel: ObservableObject {
 /// The little bubble that appears next to the cursor.
 struct HUDView: View {
     @ObservedObject var model: HUDModel
+    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -25,6 +27,7 @@ struct HUDView: View {
                     .foregroundStyle(.yellow)
                 TextField("Ask about what's on screen…", text: $model.input)
                     .textFieldStyle(.plain)
+                    .focused($fieldFocused)
                     .onSubmit { model.submit() }
                 if model.busy {
                     ProgressView().controlSize(.small)
@@ -45,5 +48,7 @@ struct HUDView: View {
         .frame(width: 380)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.08)))
+        .onAppear { fieldFocused = true }
+        .onChange(of: model.focusPing) { _, _ in fieldFocused = true }
     }
 }

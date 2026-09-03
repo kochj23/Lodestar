@@ -50,15 +50,46 @@ final class AppController: NSObject {
         settings.onSave = { [weak self] cfg in self?.reload(cfg) }
 
         if !Accessibility.isTrusted {
-            Log.warn("Accessibility not granted — hotkey, context reading and pointing will be "
-                   + "limited. Grant it in System Settings › Privacy & Security › Accessibility.")
+            Log.warn("Accessibility not granted — the hotkey won't work until you enable "
+                   + "Lodestar in System Settings › Privacy & Security › Accessibility.")
+            Accessibility.promptForTrust()
         }
         Log.info("Lodestar ready · hotkey \(config.hotkey.invoke) · egress: \(egress.summary)")
+        showWelcomeIfFirstLaunch()
     }
 
     private func invoke() {
         guard !paused else { Log.info("privacy pause is on — ignoring invoke"); return }
         hud.showAtCursor()
+    }
+
+    /// Menu-bar apps have no window or dock icon, so the first launch can look like
+    /// "nothing happened". Show a one-time note (keyed on a marker file) telling the
+    /// user it's alive, where it lives, and how to use it.
+    private func showWelcomeIfFirstLaunch() {
+        let marker = Config.path.deletingLastPathComponent().appendingPathComponent(".welcomed")
+        if FileManager.default.fileExists(atPath: marker.path) { return }
+        try? FileManager.default.createDirectory(
+            at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: marker.path, contents: nil)
+
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Lodestar is running"
+        alert.informativeText = """
+        Lodestar lives in your menu bar — look for the cursor icon at the top-right \
+        (if your menu bar is full, it may be tucked behind the notch). There is no dock \
+        icon or main window by design.
+
+        To use the \(config.hotkey.invoke) hotkey, enable Lodestar in System Settings › \
+        Privacy & Security › Accessibility (you should have just been prompted). You can \
+        also click the menu-bar icon → "Ask about screen" any time.
+        """
+        alert.addButton(withTitle: "Got it")
+        alert.addButton(withTitle: "Open Settings…")
+        if alert.runModal() == .alertSecondButtonReturn {
+            settings.show(config: config)
+        }
     }
 
     /// Persist a config edited in the Settings window and apply it live — no restart.

@@ -16,6 +16,13 @@ struct AXElement {
 enum Accessibility {
     static var isTrusted: Bool { AXIsProcessTrusted() }
 
+    /// Pop the system Accessibility prompt (adds the app to the list + offers to open
+    /// System Settings). Without this grant the global hotkey can't see key presses.
+    static func promptForTrust() {
+        let opts = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(opts)
+    }
+
     static func snapshot() -> (appName: String, selection: String?, elements: [AXElement]) {
         let appName = NSWorkspace.shared.frontmostApplication?.localizedName ?? ""
         let sys = AXUIElementCreateSystemWide()

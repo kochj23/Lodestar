@@ -14,8 +14,13 @@ final class MenuBarController: NSObject {
 
     func install(providerIDs: [String], egressSummary: String) {
         if let btn = statusItem.button {
-            btn.image = NSImage(systemSymbolName: "cursorarrow.rays",
-                                accessibilityDescription: "Lodestar")
+            if let img = NSImage(systemSymbolName: "cursorarrow.rays",
+                                 accessibilityDescription: "Lodestar") {
+                btn.image = img
+            } else {
+                btn.title = "◈"   // fallback so the item is never invisible
+            }
+            btn.toolTip = "Lodestar — click for menu, or press the hotkey to summon"
         }
         let menu = NSMenu()
         menu.addItem(withTitle: "Lodestar — local AI at your cursor", action: nil, keyEquivalent: "")
